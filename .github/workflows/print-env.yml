@@ -11,6 +11,17 @@ jobs:
     #   image: rockylinux:9
     
     steps:
+      - name: Install Required Tools
+        run: |
+          sudo apt update
+          sudo apt install -y \
+              procps \
+              util-linux \
+              gcc \
+              g++ \
+              make \
+              cmake \
+              debianutils
     #   - name: Install Required Tools
     #     run: |
     #       dnf update -y
@@ -22,17 +33,6 @@ jobs:
     #         make \
     #         cmake \
     #         which
-      - name: Install Required Tools
-        run: |
-            sudo apt update
-            sudo apt install -y \
-            procps \
-            util-linux \
-            gcc \
-            g++ \
-            make \
-            cmake \
-            which
 
       - name: System Information
         run: |
