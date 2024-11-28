@@ -1,0 +1,195 @@
+name: Build MongoDB
+run-name: Build MongoDB ${{ inputs.mongodb_version }} (${{ inputs.release_type }})
+
+on:
+  workflow_dispatch:
+    inputs:
+      mongodb_version:
+        description: 'MongoDB version to build'
+        required: true
+        type: string
+        default: '6.0.8'
+      release_type:
+        description: 'Release type'
+        required: true
+        type: choice
+        options:
+          - stable
+          - beta
+          - alpha
+        default: 'stable'
+      build_note:
+        description: 'Additional build notes'
+        required: false
+        type: string
+        default: ''
+
+env:
+  INSTALL_PREFIX: /usr/local
+  ARTIFACT_DIR: artifacts
+
+jobs:
+  build:
+    name: Build MongoDB
+    runs-on: ubuntu-latest
+    container:
+      image: rockylinux:9
+
+    steps:
+      - name: Debug Print Inputs
+        run: echo inputs "${{ toJSON(github.event.inputs) }}"
+
+      - name: Install build dependencies
+        run: |
+          dnf update -y
+          dnf group install -y "Development Tools"
+          dnf install -y \
+            wget \
+            git \
+            gcc-c++ \
+            python39 \
+            python39-pip \
+            cmake \
+            make \
+            openssl-devel \
+            cyrus-sasl-devel \
+            libcurl-devel \
+            zlib-devel \
+            xz-devel \
+            tar \
+            gzip \
+            which \
+            vim-common
+
+      - name: Install Python dependencies
+        run: |
+          python3.9 -m pip install --upgrade pip
+          python3.9 -m pip install PyYAML typing_extensions
+
+      - name: Download MongoDB source
+        run: |
+          wget https://github.com/mongodb/mongo/archive/r${{ inputs.mongodb_version }}.tar.gz
+          tar xzf r${{ inputs.mongodb_version }}.tar.gz
+          mv mongo-r${{ inputs.mongodb_version }} mongodb-src
+
+      - name: Build MongoDB
+        run: |
+          cd mongodb-src
+          python3.9 buildscripts/scons.py \
+            --release \
+            --prefix=${{ env.INSTALL_PREFIX }} \
+            --ssl \
+            --disable-warnings-as-errors \
+            -j$(nproc) \
+            install-core
+
+      - name: Prepare artifacts
+        id: prepare
+        run: |
+          mkdir -p ${{ env.ARTIFACT_DIR }}/bin
+
+          # Copy binaries
+          cp ${{ env.INSTALL_PREFIX }}/bin/mongo* ${{ env.ARTIFACT_DIR }}/bin/
+
+          # Create detailed build info
+          cat > ${{ env.ARTIFACT_DIR }}/build-info.txt << EOF
+          Build Information:
+          -----------------
+          MongoDB Version: ${{ inputs.mongodb_version }}
+          Release Type: ${{ inputs.release_type }}
+          Build Date: $(date)
+          Build System: Rocky Linux 9 (x86_64)
+          Build Notes: ${{ inputs.build_note }}
+
+          Compiler Version: $(gcc --version | head -n1)
+          Python Version: $(python3.9 --version)
+          CMake Version: $(cmake --version | head -n1)
+
+          Build Configuration:
+          - Release build
+          - SSL enabled
+          - Prefix: ${{ env.INSTALL_PREFIX }}
+          EOF
+
+          # Calculate SHA256 checksums
+          cd ${{ env.ARTIFACT_DIR }}
+          sha256sum bin/mongo* > sha256sums.txt
+
+          # Create artifact package
+          ARTIFACT_NAME="mongodb-${{ inputs.mongodb_version }}-rockylinux9-x86_64.tar.gz"
+          cd ..
+          tar czf $ARTIFACT_NAME -C ${{ env.ARTIFACT_DIR }} .
+          echo "artifact_name=$ARTIFACT_NAME" >> $GITHUB_OUTPUT
+
+          # Generate SHA256 for the final package
+          sha256sum $ARTIFACT_NAME > ${ARTIFACT_NAME}.sha256
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: mongodb-build
+          path: |
+            mongodb-${{ inputs.mongodb_version }}-rockylinux9-x86_64.tar.gz
+            mongodb-${{ inputs.mongodb_version }}-rockylinux9-x86_64.tar.gz.sha256
+
+    outputs:
+      artifact_name: ${{ steps.prepare.outputs.artifact_name }}
+
+  create-release:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download artifact
+        uses: actions/download-artifact@v3
+        with:
+          name: mongodb-build
+          path: ./
+
+      - name: Generate changelog
+        run: |
+          cat > changelog.md << EOF
+          # MongoDB ${{ inputs.mongodb_version }} for Rocky Linux 9 (x86_64)
+
+          ## Build Information
+          - **Version:** ${{ inputs.mongodb_version }}
+          - **Release Type:** ${{ inputs.release_type }}
+          - **Build Date:** $(date)
+          - **Platform:** Rocky Linux 9 (x86_64)
+
+          ## Build Notes
+          ${BUILD_NOTES:-No additional notes}
+
+          ## SHA256 Checksums
+          \`\`\`
+          $(cat mongodb-${{ inputs.mongodb_version }}-rockylinux9-x86_64.tar.gz.sha256)
+          \`\`\`
+
+          ## Installation
+          1. Download the package
+          2. Verify the checksum:
+             \`sha256sum -c mongodb-${{ inputs.mongodb_version }}-rockylinux9-x86_64.tar.gz.sha256\`
+          3. Extract the archive:
+             \`tar xzf mongodb-${{ inputs.mongodb_version }}-rockylinux9-x86_64.tar.gz\`
+
+          ## Additional Information
+          - Workflow Run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          - Build Trigger: Manual by @${{ github.actor }}
+          EOF
+        env:
+          BUILD_NOTES: ${{ inputs.build_note }}
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: mongodb-${{ inputs.mongodb_version }}-rockylinux9
+          name: MongoDB ${{ inputs.mongodb_version }} (${{ inputs.release_type }}) - Rocky Linux 9
+          body_path: changelog.md
+          draft: false
+          prerelease: ${{ inputs.release_type != 'stable' }}
+          files: |
+            mongodb-${{ inputs.mongodb_version }}-rockylinux9-x86_64.tar.gz
+            mongodb-${{ inputs.mongodb_version }}-rockylinux9-x86_64.tar.gz.sha256
