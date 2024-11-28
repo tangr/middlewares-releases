@@ -1,0 +1,56 @@
+name: Print Build Environment Info
+
+on:
+  workflow_dispatch:
+
+jobs:
+  print-env:
+    name: Print Environment Information
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: System Information
+        run: |
+          echo "=== System Information ==="
+          uname -a
+          cat /etc/os-release
+          
+      - name: CPU Information
+        run: |
+          echo -e "\n=== CPU Information ==="
+          lscpu
+          echo "CPU Cores: $(nproc)"
+          
+      - name: Memory Information
+        run: |
+          echo -e "\n=== Memory Information ==="
+          free -h
+          
+      - name: Disk Information
+        run: |
+          echo -e "\n=== Disk Information ==="
+          df -h
+          
+      - name: Compiler Information
+        run: |
+          echo -e "\n=== Compiler Information ==="
+          gcc --version
+          g++ --version
+          
+      - name: Build Tools Information
+        run: |
+          echo -e "\n=== Build Tools Information ==="
+          make --version
+          cmake --version || echo "CMake not installed"
+          
+      - name: Environment Variables
+        run: |
+          echo -e "\n=== Environment Variables ==="
+          env | sort
+
+      - name: GitHub Runner Information
+        run: |
+          echo -e "\n=== GitHub Runner Information ==="
+          echo "Runner OS: $RUNNER_OS"
+          echo "Runner Temp: $RUNNER_TEMP"
+          echo "Runner Tool Cache: $RUNNER_TOOL_CACHE"
