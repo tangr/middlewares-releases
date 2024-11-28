@@ -75,6 +75,12 @@ jobs:
         run: |
           ninja-build --version
 
+      - name: Download MongoDB source
+        run: |
+          wget https://github.com/mongodb/mongo/archive/r${{ inputs.mongodb_version }}.tar.gz
+          tar xzf r${{ inputs.mongodb_version }}.tar.gz
+          mv mongo-r${{ inputs.mongodb_version }} mongodb-src
+
       - name: Setup Python virtual environment
         run: |
           python3 -m pip install --upgrade pip
@@ -89,12 +95,6 @@ jobs:
         run: |
           source venv/bin/activate
           ninja --version
-
-      - name: Download MongoDB source
-        run: |
-          wget https://github.com/mongodb/mongo/archive/r${{ inputs.mongodb_version }}.tar.gz
-          tar xzf r${{ inputs.mongodb_version }}.tar.gz
-          mv mongo-r${{ inputs.mongodb_version }} mongodb-src
 
       - name: Build MongoDB
         run: |
