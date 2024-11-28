@@ -8,6 +8,15 @@ on:
         required: true
         default: '7.2.3'
         type: string
+      release_type:
+        description: 'Release type'
+        required: true
+        type: choice
+        options:
+          - stable
+          - beta
+          - alpha
+        default: 'stable'
 
 env:
   INSTALL_PREFIX: /usr/local
@@ -62,9 +71,42 @@ jobs:
 
           tar czf redis-${{ inputs.redis_version }}-rockylinux9-x86_64.tar.gz -C ${{ env.ARTIFACT_DIR }} .
 
-      - name: Upload artifacts
-        uses: actions/upload-artifact@v3
+      - name: Save artifact to workspace
+        run: |
+          mkdir -p /github/workspace/
+          cp redis-${{ inputs.redis_version }}-rockylinux9-x86_64.tar.gz /github/workspace/
+
+    outputs:
+      artifact_name: redis-${{ inputs.redis_version }}-rockylinux9-x86_64.tar.gz
+
+  create-release:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download artifact from workspace
+        uses: actions/download-artifact@v3
         with:
-          name: redis-${{ inputs.redis_version }}-rockylinux9-x86_64
-          path: redis-${{ inputs.redis_version }}-rockylinux9-x86_64.tar.gz
-          retention-days: 7
+          name: artifact
+          path: ./
+
+      - name: Generate changelog
+        run: |
+          echo "Redis ${{ inputs.redis_version }} built for Rocky Linux 9 (x86_64)" > changelog.md
+          echo "Build type: ${{ inputs.release_type }}" >> changelog.md
+          echo "Build date: $(date)" >> changelog.md
+
+      - name: Create Release
+        id: create_release
+        uses: softprops/action-gh-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: redis-${{ inputs.redis_version }}-rockylinux9
+          name: Redis ${{ inputs.redis_version }} (Rocky Linux 9)
+          body_path: changelog.md
+          draft: false
+          prerelease: ${{ inputs.release_type != 'stable' }}
+          files: |
+            ${{ needs.build.outputs.artifact_name }}
