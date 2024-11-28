@@ -11,14 +11,25 @@ jobs:
     #   image: rockylinux:9
     
     steps:
+    #   - name: Install Required Tools
+    #     run: |
+    #       dnf update -y
+    #       dnf install -y \
+    #         procps-ng \
+    #         util-linux \
+    #         gcc \
+    #         gcc-c++ \
+    #         make \
+    #         cmake \
+    #         which
       - name: Install Required Tools
         run: |
-          dnf update -y
-          dnf install -y \
-            procps-ng \
+            sudo apt update
+            sudo apt install -y \
+            procps \
             util-linux \
             gcc \
-            gcc-c++ \
+            g++ \
             make \
             cmake \
             which
