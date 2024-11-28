@@ -106,12 +106,22 @@ jobs:
 
           # Create artifact package
           ARTIFACT_NAME="openresty-${{ inputs.openresty_version }}-rockylinux9-x86_64.tar.gz"
-          cd ..
-          tar czf $ARTIFACT_NAME -C ${{ env.ARTIFACT_DIR }} .
+
+          # Make sure we're in the correct directory and the artifact exists
+          ls -la ${{ env.ARTIFACT_DIR }}
+
+          # Create the tar from the artifacts directory
+          tar -czf $ARTIFACT_NAME ${{ env.ARTIFACT_DIR }}/*
+
+          # Set the output for use in later steps
           echo "artifact_name=$ARTIFACT_NAME" >> $GITHUB_OUTPUT
 
           # Generate SHA256 for the final package
           sha256sum $ARTIFACT_NAME > ${ARTIFACT_NAME}.sha256
+
+          # Debug output
+          ls -la
+          cat ${ARTIFACT_NAME}.sha256
 
       - name: Upload artifact
         uses: actions/upload-artifact@v3
