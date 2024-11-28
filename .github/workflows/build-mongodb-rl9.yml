@@ -107,7 +107,7 @@ jobs:
             --release \
             --disable-warnings-as-errors \
             -j$(nproc) \
-            install-core
+            install-mongod
 
       - name: Prepare artifacts
         id: prepare
