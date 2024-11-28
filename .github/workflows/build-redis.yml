@@ -1,4 +1,4 @@
-name: Build Redis
+name: Build Redis ${{ inputs.redis_version }} (${{ inputs.release_type }})
 
 on:
   workflow_dispatch:
@@ -17,6 +17,11 @@ on:
           - beta
           - alpha
         default: 'stable'
+      build_note:
+        description: 'Additional build notes'
+        required: false
+        type: string
+        default: ''
 
 env:
   INSTALL_PREFIX: /usr/local
@@ -29,7 +34,6 @@ jobs:
       image: rockylinux:9
 
     steps:
-      # Install necessary build tools and dependencies
       - name: Install build dependencies
         run: |
           dnf update -y
@@ -42,13 +46,11 @@ jobs:
             gzip \
             systemd-devel
 
-      # Download and extract Redis source code
       - name: Download Redis source
         run: |
           wget https://download.redis.io/releases/redis-${{ inputs.redis_version }}.tar.gz
           tar xzf redis-${{ inputs.redis_version }}.tar.gz
 
-      # Build Redis with specified options
       - name: Build Redis
         run: |
           cd redis-${{ inputs.redis_version }}
@@ -57,13 +59,11 @@ jobs:
             USE_SYSTEMD=yes \
             -j$(nproc)
 
-      # Install Redis to the specified prefix
       - name: Install Redis
         run: |
           cd redis-${{ inputs.redis_version }}
           make install PREFIX=${{ env.INSTALL_PREFIX }}
 
-      # Prepare and package artifacts
       - name: Prepare artifacts
         id: prepare
         run: |
@@ -72,22 +72,45 @@ jobs:
           cp ${{ env.INSTALL_PREFIX }}/bin/redis* ${{ env.ARTIFACT_DIR }}/
           cp redis-${{ inputs.redis_version }}/redis.conf ${{ env.ARTIFACT_DIR }}/
 
-          # Create version info file
-          echo "Redis version: ${{ inputs.redis_version }}" > ${{ env.ARTIFACT_DIR }}/version.txt
-          echo "Build date: $(date)" >> ${{ env.ARTIFACT_DIR }}/version.txt
+          # Create detailed build info
+          cat > ${{ env.ARTIFACT_DIR }}/build-info.txt << EOF
+          Build Information:
+          -----------------
+          Redis Version: ${{ inputs.redis_version }}
+          Release Type: ${{ inputs.release_type }}
+          Build Date: $(date)
+          Build System: Rocky Linux 9 (x86_64)
+          Build Notes: ${{ inputs.build_note }}
+
+          Compiler Version: $(gcc --version | head -n1)
+          Make Version: $(make --version | head -n1)
+
+          Build Configuration:
+          - MALLOC: libc
+          - PREFIX: ${{ env.INSTALL_PREFIX }}
+          - USE_SYSTEMD: yes
+          EOF
+
+          # Calculate SHA256 checksum for binaries
+          cd ${{ env.ARTIFACT_DIR }}
+          sha256sum redis-* > sha256sums.txt
 
           # Create artifact package
           ARTIFACT_NAME="redis-${{ inputs.redis_version }}-rockylinux9-x86_64.tar.gz"
+          cd ..
           tar czf $ARTIFACT_NAME -C ${{ env.ARTIFACT_DIR }} .
           echo "artifact_name=$ARTIFACT_NAME" >> $GITHUB_OUTPUT
 
-      # Upload artifact for the release job
+          # Generate SHA256 for the final package
+          sha256sum $ARTIFACT_NAME > ${ARTIFACT_NAME}.sha256
+
       - name: Upload artifact
         uses: actions/upload-artifact@v3
         with:
           name: redis-build
-          path: redis-${{ inputs.redis_version }}-rockylinux9-x86_64.tar.gz
-          retention-days: 1
+          path: |
+            redis-${{ inputs.redis_version }}-rockylinux9-x86_64.tar.gz
+            redis-${{ inputs.redis_version }}-rockylinux9-x86_64.tar.gz.sha256
 
     outputs:
       artifact_name: ${{ steps.prepare.outputs.artifact_name }}
@@ -98,29 +121,55 @@ jobs:
     permissions:
       contents: write
     steps:
-      # Download the artifact from previous job
       - name: Download artifact
         uses: actions/download-artifact@v3
         with:
           name: redis-build
           path: ./
 
-      # Generate release changelog
       - name: Generate changelog
         run: |
-          echo "Redis ${{ inputs.redis_version }} built for Rocky Linux 9 (x86_64)" > changelog.md
-          echo "Build type: ${{ inputs.release_type }}" >> changelog.md
-          echo "Build date: $(date)" >> changelog.md
+          cat > changelog.md << EOF
+          # Redis ${{ inputs.redis_version }} for Rocky Linux 9 (x86_64)
 
-      # Create GitHub release and upload artifacts
+          ## Build Information
+          - **Version:** ${{ inputs.redis_version }}
+          - **Release Type:** ${{ inputs.release_type }}
+          - **Build Date:** $(date)
+          - **Platform:** Rocky Linux 9 (x86_64)
+
+          ## Build Notes
+          ${BUILD_NOTES:-No additional notes}
+
+          ## SHA256 Checksums
+          \`\`\`
+          $(cat redis-${{ inputs.redis_version }}-rockylinux9-x86_64.tar.gz.sha256)
+          \`\`\`
+
+          ## Installation
+          1. Download the package
+          2. Verify the checksum:
+             \`sha256sum -c redis-${{ inputs.redis_version }}-rockylinux9-x86_64.tar.gz.sha256\`
+          3. Extract the archive:
+             \`tar xzf redis-${{ inputs.redis_version }}-rockylinux9-x86_64.tar.gz\`
+
+          ## Additional Information
+          - Workflow Run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          - Build Trigger: Manual by @${{ github.actor }}
+          EOF
+        env:
+          BUILD_NOTES: ${{ inputs.build_note }}
+
       - name: Create Release
         uses: softprops/action-gh-release@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           tag_name: redis-${{ inputs.redis_version }}-rockylinux9
-          name: Redis ${{ inputs.redis_version }} (Rocky Linux 9)
+          name: Redis ${{ inputs.redis_version }} (${{ inputs.release_type }}) - Rocky Linux 9
           body_path: changelog.md
           draft: false
           prerelease: ${{ inputs.release_type != 'stable' }}
-          files: ${{ needs.build.outputs.artifact_name }}
+          files: |
+            redis-${{ inputs.redis_version }}-rockylinux9-x86_64.tar.gz
+            redis-${{ inputs.redis_version }}-rockylinux9-x86_64.tar.gz.sha256
