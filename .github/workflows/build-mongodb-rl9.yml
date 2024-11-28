@@ -47,8 +47,8 @@ jobs:
             wget \
             git \
             gcc-c++ \
-            python39 \
-            python39-pip \
+            python3 \
+            python3-pip \
             cmake \
             make \
             openssl-devel \
@@ -63,8 +63,8 @@ jobs:
 
       - name: Install Python dependencies
         run: |
-          python3.9 -m pip install --upgrade pip
-          python3.9 -m pip install PyYAML typing_extensions
+          python3 -m pip install --upgrade pip
+          python3 -m pip install PyYAML typing_extensions
 
       - name: Download MongoDB source
         run: |
@@ -75,7 +75,7 @@ jobs:
       - name: Build MongoDB
         run: |
           cd mongodb-src
-          python3.9 buildscripts/scons.py \
+          python3 buildscripts/scons.py \
             --release \
             --prefix=${{ env.INSTALL_PREFIX }} \
             --ssl \
