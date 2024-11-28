@@ -22,7 +22,7 @@ on:
         description: 'Additional build notes'
         required: false
         type: string
-        default: ''
+        default: 'testing-build'
 
 env:
   INSTALL_PREFIX: /usr/local
