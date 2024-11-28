@@ -26,6 +26,9 @@ jobs:
       - name: System Information
         run: |
           echo "=== System Information ==="
+          hostname
+          hostname -f
+          ifconfig eth0
           uname -a
           cat /etc/os-release
 
