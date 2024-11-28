@@ -1,0 +1,184 @@
+name: Build OpenResty
+run-name: Build OpenResty ${{ inputs.openresty_version }} (${{ inputs.release_type }})
+
+on:
+  workflow_dispatch:
+    inputs:
+      openresty_version:
+        description: 'OpenResty version to build'
+        required: true
+        type: string
+        default: '1.21.4.2'
+      release_type:
+        description: 'Release type'
+        required: true
+        type: choice
+        options:
+          - stable
+          - beta
+          - alpha
+        default: 'stable'
+      build_note:
+        description: 'Additional build notes'
+        required: false
+        type: string
+        default: ''
+
+env:
+  INSTALL_PREFIX: /usr/local/openresty
+  ARTIFACT_DIR: artifacts
+
+jobs:
+  build:
+    name: Build OpenResty
+    runs-on: ubuntu-latest
+    container:
+      image: rockylinux:9
+
+    steps:
+      - name: Debug Print Inputs
+        run: echo inputs "${{ toJSON(github.event.inputs) }}"
+
+      - name: Install build dependencies
+        run: |
+          dnf update -y
+          dnf group install -y "Development Tools"
+          dnf install -y \
+            wget \
+            gcc \
+            make \
+            pcre-devel \
+            openssl-devel \
+            zlib-devel \
+            perl \
+            systemd-devel
+
+      - name: Download OpenResty source
+        run: |
+          wget https://openresty.org/download/openresty-${{ inputs.openresty_version }}.tar.gz
+          tar xzf openresty-${{ inputs.openresty_version }}.tar.gz
+
+      - name: Build OpenResty
+        run: |
+          cd openresty-${{ inputs.openresty_version }}
+          ./configure \
+            --prefix=${{ env.INSTALL_PREFIX }} \
+            --with-luajit \
+            --with-pcre \
+            --with-http_ssl_module \
+            --with-http_v2_module \
+            --with-http_realip_module \
+            --with-http_stub_status_module \
+            --with-http_gzip_static_module
+          make -j$(nproc)
+
+      - name: Install OpenResty
+        run: |
+          cd openresty-${{ inputs.openresty_version }}
+          make install
+
+      - name: Prepare artifacts
+        id: prepare
+        run: |
+          mkdir -p ${{ env.ARTIFACT_DIR }}
+          # Copy installation directory
+          cp -r ${{ env.INSTALL_PREFIX }}/* ${{ env.ARTIFACT_DIR }}/
+
+          # Create detailed build info
+          cat > ${{ env.ARTIFACT_DIR }}/build-info.txt << EOF
+          Build Information:
+          -----------------
+          OpenResty Version: ${{ inputs.openresty_version }}
+          Release Type: ${{ inputs.release_type }}
+          Build Date: $(date)
+          Build System: Rocky Linux 9 (x86_64)
+          Build Notes: ${{ inputs.build_note }}
+
+          Compiler Version: $(gcc --version | head -n1)
+          Make Version: $(make --version | head -n1)
+
+          Build Configuration:
+          - PREFIX: ${{ env.INSTALL_PREFIX }}
+          - WITH_LUAJIT: yes
+          - WITH_HTTP_SSL_MODULE: yes
+          - WITH_HTTP_V2_MODULE: yes
+          EOF
+
+          # Create artifact package
+          ARTIFACT_NAME="openresty-${{ inputs.openresty_version }}-rockylinux9-x86_64.tar.gz"
+          cd ..
+          tar czf $ARTIFACT_NAME -C ${{ env.ARTIFACT_DIR }} .
+          echo "artifact_name=$ARTIFACT_NAME" >> $GITHUB_OUTPUT
+
+          # Generate SHA256 for the final package
+          sha256sum $ARTIFACT_NAME > ${ARTIFACT_NAME}.sha256
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: openresty-build
+          path: |
+            openresty-${{ inputs.openresty_version }}-rockylinux9-x86_64.tar.gz
+            openresty-${{ inputs.openresty_version }}-rockylinux9-x86_64.tar.gz.sha256
+
+    outputs:
+      artifact_name: ${{ steps.prepare.outputs.artifact_name }}
+
+  create-release:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download artifact
+        uses: actions/download-artifact@v3
+        with:
+          name: openresty-build
+          path: ./
+
+      - name: Generate changelog
+        run: |
+          cat > changelog.md << EOF
+          # OpenResty ${{ inputs.openresty_version }} for Rocky Linux 9 (x86_64)
+
+          ## Build Information
+          - **Version:** ${{ inputs.openresty_version }}
+          - **Release Type:** ${{ inputs.release_type }}
+          - **Build Date:** $(date)
+          - **Platform:** Rocky Linux 9 (x86_64)
+
+          ## Build Notes
+          ${BUILD_NOTES:-No additional notes}
+
+          ## SHA256 Checksums
+          \`\`\`
+          $(cat openresty-${{ inputs.openresty_version }}-rockylinux9-x86_64.tar.gz.sha256)
+          \`\`\`
+
+          ## Installation
+          1. Download the package
+          2. Verify the checksum:
+             \`sha256sum -c openresty-${{ inputs.openresty_version }}-rockylinux9-x86_64.tar.gz.sha256\`
+          3. Extract the archive:
+             \`tar xzf openresty-${{ inputs.openresty_version }}-rockylinux9-x86_64.tar.gz\`
+
+          ## Additional Information
+          - Workflow Run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          - Build Trigger: Manual by @${{ github.actor }}
+          EOF
+        env:
+          BUILD_NOTES: ${{ inputs.build_note }}
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: openresty-${{ inputs.openresty_version }}-rockylinux9
+          name: OpenResty ${{ inputs.openresty_version }} (${{ inputs.release_type }}) - Rocky Linux 9
+          body_path: changelog.md
+          draft: false
+          prerelease: ${{ inputs.release_type != 'stable' }}
+          files: |
+            openresty-${{ inputs.openresty_version }}-rockylinux9-x86_64.tar.gz
+            openresty-${{ inputs.openresty_version }}-rockylinux9-x86_64.tar.gz.sha256
