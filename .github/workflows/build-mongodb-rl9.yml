@@ -43,12 +43,14 @@ jobs:
         run: |
           dnf update -y
           dnf group install -y "Development Tools"
+          dnf config-manager --set-enabled crb
           dnf install -y \
             wget \
             git \
             gcc-c++ \
             python3 \
             python3-pip \
+            python3-devel \
             cmake \
             make \
             openssl-devel \
@@ -59,12 +61,31 @@ jobs:
             tar \
             gzip \
             which \
-            vim-common
+            vim-common \
+            rpmdevtools \
+            rpm-build \
+            ninja-build
 
       - name: Install Python dependencies
         run: |
           python3 -m pip install --upgrade pip
-          python3 -m pip install PyYAML typing_extensions
+          python3 -m pip install \
+            PyYAML \
+            typing_extensions \
+            requirements_parser \
+            psutil \
+            boto3 \
+            pymongo \
+            yapf \
+            mypy \
+            pylint \
+            requests \
+            regex \
+            jinja2 \
+            fasteners \
+            pyyaml \
+            mock \
+            scons
 
       - name: Download MongoDB source
         run: |
