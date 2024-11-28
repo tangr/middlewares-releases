@@ -36,10 +36,6 @@ jobs:
       image: rockylinux:9
 
     steps:
-      - name: Debug Inputs Parameters
-        env:
-          PARAMETERS: "${{ tojson(inputs) }}"
-        run: echo See env for the parameters
       - name: Debug Print Inputs
         run: echo inputs "${{ toJSON(github.event.inputs) }}"
 
