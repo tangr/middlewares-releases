@@ -17,7 +17,7 @@ on:
           - stable
           - beta
           - alpha
-        default: 'stable'
+        default: 'alpha'
       build_note:
         description: 'Additional build notes'
         required: false
