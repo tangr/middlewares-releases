@@ -7,8 +7,8 @@ on:
       redis_version:
         description: 'Redis version to build'
         required: true
-        default: '6.2.16'
         type: string
+        default: '6.2.16'
       release_type:
         description: 'Release type'
         required: true
