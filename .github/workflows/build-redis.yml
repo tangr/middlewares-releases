@@ -1,0 +1,70 @@
+name: Build Redis
+
+on:
+  workflow_dispatch:
+    inputs:
+      redis_version:
+        description: 'Redis version to build'
+        required: true
+        default: '7.2.3'
+        type: string
+
+env:
+  INSTALL_PREFIX: /usr/local
+  ARTIFACT_DIR: artifacts
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    container:
+      image: rockylinux:9
+
+    steps:
+      - name: Install build dependencies
+        run: |
+          dnf update -y
+          dnf group install -y "Development Tools"
+          dnf install -y \
+            wget \
+            gcc \
+            make \
+            tar \
+            gzip \
+            systemd-devel
+
+      - name: Download Redis source
+        run: |
+          wget https://download.redis.io/releases/redis-${{ inputs.redis_version }}.tar.gz
+          tar xzf redis-${{ inputs.redis_version }}.tar.gz
+
+      - name: Build Redis
+        run: |
+          cd redis-${{ inputs.redis_version }}
+          make MALLOC=libc \
+            PREFIX=${{ env.INSTALL_PREFIX }} \
+            USE_SYSTEMD=yes \
+            -j$(nproc)
+
+      - name: Install Redis
+        run: |
+          cd redis-${{ inputs.redis_version }}
+          make install PREFIX=${{ env.INSTALL_PREFIX }}
+
+      - name: Prepare artifacts
+        run: |
+          mkdir -p ${{ env.ARTIFACT_DIR }}
+
+          cp ${{ env.INSTALL_PREFIX }}/bin/redis* ${{ env.ARTIFACT_DIR }}/
+          cp redis-${{ inputs.redis_version }}/redis.conf ${{ env.ARTIFACT_DIR }}/
+
+          echo "Redis version: ${{ inputs.redis_version }}" > ${{ env.ARTIFACT_DIR }}/version.txt
+          echo "Build date: $(date)" >> ${{ env.ARTIFACT_DIR }}/version.txt
+
+          tar czf redis-${{ inputs.redis_version }}-rockylinux9-x86_64.tar.gz -C ${{ env.ARTIFACT_DIR }} .
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: redis-${{ inputs.redis_version }}-rockylinux9-x86_64
+          path: redis-${{ inputs.redis_version }}-rockylinux9-x86_64.tar.gz
+          retention-days: 7
