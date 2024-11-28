@@ -29,6 +29,7 @@ jobs:
       image: rockylinux:9
 
     steps:
+      # Install necessary build tools and dependencies
       - name: Install build dependencies
         run: |
           dnf update -y
@@ -41,11 +42,13 @@ jobs:
             gzip \
             systemd-devel
 
+      # Download and extract Redis source code
       - name: Download Redis source
         run: |
           wget https://download.redis.io/releases/redis-${{ inputs.redis_version }}.tar.gz
           tar xzf redis-${{ inputs.redis_version }}.tar.gz
 
+      # Build Redis with specified options
       - name: Build Redis
         run: |
           cd redis-${{ inputs.redis_version }}
@@ -54,30 +57,40 @@ jobs:
             USE_SYSTEMD=yes \
             -j$(nproc)
 
+      # Install Redis to the specified prefix
       - name: Install Redis
         run: |
           cd redis-${{ inputs.redis_version }}
           make install PREFIX=${{ env.INSTALL_PREFIX }}
 
+      # Prepare and package artifacts
       - name: Prepare artifacts
+        id: prepare
         run: |
           mkdir -p ${{ env.ARTIFACT_DIR }}
-
+          # Copy binaries and config files
           cp ${{ env.INSTALL_PREFIX }}/bin/redis* ${{ env.ARTIFACT_DIR }}/
           cp redis-${{ inputs.redis_version }}/redis.conf ${{ env.ARTIFACT_DIR }}/
 
+          # Create version info file
           echo "Redis version: ${{ inputs.redis_version }}" > ${{ env.ARTIFACT_DIR }}/version.txt
           echo "Build date: $(date)" >> ${{ env.ARTIFACT_DIR }}/version.txt
 
-          tar czf redis-${{ inputs.redis_version }}-rockylinux9-x86_64.tar.gz -C ${{ env.ARTIFACT_DIR }} .
+          # Create artifact package
+          ARTIFACT_NAME="redis-${{ inputs.redis_version }}-rockylinux9-x86_64.tar.gz"
+          tar czf $ARTIFACT_NAME -C ${{ env.ARTIFACT_DIR }} .
+          echo "artifact_name=$ARTIFACT_NAME" >> $GITHUB_OUTPUT
 
-      - name: Save artifact to workspace
-        run: |
-          mkdir -p /github/workspace/
-          cp redis-${{ inputs.redis_version }}-rockylinux9-x86_64.tar.gz /github/workspace/
+      # Upload artifact for the release job
+      - name: Upload artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: redis-build
+          path: redis-${{ inputs.redis_version }}-rockylinux9-x86_64.tar.gz
+          retention-days: 1
 
     outputs:
-      artifact_name: redis-${{ inputs.redis_version }}-rockylinux9-x86_64.tar.gz
+      artifact_name: ${{ steps.prepare.outputs.artifact_name }}
 
   create-release:
     needs: build
@@ -85,20 +98,22 @@ jobs:
     permissions:
       contents: write
     steps:
-      - name: Download artifact from workspace
+      # Download the artifact from previous job
+      - name: Download artifact
         uses: actions/download-artifact@v3
         with:
-          name: artifact
+          name: redis-build
           path: ./
 
+      # Generate release changelog
       - name: Generate changelog
         run: |
           echo "Redis ${{ inputs.redis_version }} built for Rocky Linux 9 (x86_64)" > changelog.md
           echo "Build type: ${{ inputs.release_type }}" >> changelog.md
           echo "Build date: $(date)" >> changelog.md
 
+      # Create GitHub release and upload artifacts
       - name: Create Release
-        id: create_release
         uses: softprops/action-gh-release@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -108,5 +123,4 @@ jobs:
           body_path: changelog.md
           draft: false
           prerelease: ${{ inputs.release_type != 'stable' }}
-          files: |
-            ${{ needs.build.outputs.artifact_name }}
+          files: ${{ needs.build.outputs.artifact_name }}
