@@ -102,9 +102,9 @@ jobs:
           cd mongodb-src
           python3 buildscripts/scons.py \
             MONGO_VERSION=${{ inputs.mongodb_version }} \
-            --release \
-            --prefix=${{ env.INSTALL_PREFIX }} \
+            install_prefix=${{ env.INSTALL_PREFIX }} \
             --ssl \
+            --release \
             --disable-warnings-as-errors \
             -j$(nproc) \
             install-core
