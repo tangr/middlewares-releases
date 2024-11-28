@@ -30,13 +30,19 @@ env:
 
 jobs:
   build:
-    # name: Build Redis
-    name: jobs Build Redis ${{ inputs.redis_version }} (${{ inputs.release_type }})
+    name: Build Redis
     runs-on: ubuntu-latest
     container:
       image: rockylinux:9
 
     steps:
+      - name: Inputs Parameters
+        env:
+          PARAMETERS: "${{ tojson(inputs) }}"
+        run: echo See env for the parameters
+      - name: Output Inputs
+        run: echo "${{ toJSON(github.event.inputs) }}"
+
       - name: Install build dependencies
         run: |
           dnf update -y
