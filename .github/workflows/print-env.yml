@@ -7,8 +7,8 @@ jobs:
   print-env:
     name: Print Environment Information
     runs-on: ubuntu-latest
-    container:
-      image: rockylinux:9
+    # container:
+    #   image: rockylinux:9
     
     steps:
       - name: Install Required Tools
@@ -28,7 +28,8 @@ jobs:
           echo "=== System Information ==="
           hostname
           hostname -f
-          ifconfig eth0
+          ip a
+          ip a show eth0
           uname -a
           cat /etc/os-release
 
