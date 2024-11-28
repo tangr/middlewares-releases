@@ -1,4 +1,5 @@
-name: Build Redis ${{ inputs.redis_version }} (${{ inputs.release_type }})
+name: Build Redis
+run-name: Build Redis ${{ inputs.redis_version }} (${{ inputs.release_type }})
 
 on:
   workflow_dispatch:
@@ -29,6 +30,8 @@ env:
 
 jobs:
   build:
+    # name: Build Redis
+    name: jobs Build Redis ${{ inputs.redis_version }} (${{ inputs.release_type }})
     runs-on: ubuntu-latest
     container:
       image: rockylinux:9
