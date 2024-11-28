@@ -45,6 +45,8 @@ jobs:
           dnf install -y dnf-plugins-core
           dnf group install -y "Development Tools"
           dnf config-manager --set-enabled crb
+          # Add EPEL repository for newer versions of some packages
+          dnf install -y epel-release
           dnf install -y \
             wget \
             git \
@@ -69,29 +71,24 @@ jobs:
             rpm-build \
             ninja-build
 
+      - name: Verify system ninja
+        run: |
+          ninja-build --version
+
       - name: Setup Python virtual environment
         run: |
           python3 -m pip install --upgrade pip
           python3 -m pip install virtualenv
           python3 -m virtualenv venv
           source venv/bin/activate
-          pip install \
-            PyYAML \
-            typing_extensions \
-            requirements_parser \
-            psutil \
-            boto3 \
-            pymongo \
-            yapf \
-            mypy \
-            pylint \
-            requests \
-            regex \
-            jinja2 \
-            fasteners \
-            pyyaml \
-            mock \
-            scons
+          cd mongodb-src
+          pip install -r etc/pip/compile-requirements.txt
+          pip install scons
+
+      - name: Verify ninja installation
+        run: |
+          source venv/bin/activate
+          ninja --version
 
       - name: Download MongoDB source
         run: |
