@@ -101,6 +101,7 @@ jobs:
           source venv/bin/activate
           cd mongodb-src
           python3 buildscripts/scons.py \
+            MONGO_VERSION=${{ inputs.mongodb_version }} \
             --release \
             --prefix=${{ env.INSTALL_PREFIX }} \
             --ssl \
