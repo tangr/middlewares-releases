@@ -101,13 +101,15 @@ jobs:
           sha256sum redis-* > sha256sums.txt
 
           # Create artifact package
-          ARTIFACT_NAME="redis-${{ inputs.redis_version }}-rockylinux9-x86_64.tar.gz"
+          ARTIFACT_NAME="redis-${{ inputs.redis_version }}-rockylinux9-x86_64"
           cd ..
-          tar czf $ARTIFACT_NAME -C ${{ env.ARTIFACT_DIR }} .
-          echo "artifact_name=$ARTIFACT_NAME" >> $GITHUB_OUTPUT
+          mkdir -p $ARTIFACT_NAME
+          cp -r ${{ env.ARTIFACT_DIR }}/* $ARTIFACT_NAME/
+          tar czf ${ARTIFACT_NAME}.tar.gz $ARTIFACT_NAME
+          echo "artifact_name=${ARTIFACT_NAME}.tar.gz" >> $GITHUB_OUTPUT
 
           # Generate SHA256 for the final package
-          sha256sum $ARTIFACT_NAME > ${ARTIFACT_NAME}.sha256
+          sha256sum ${ARTIFACT_NAME}.tar.gz > ${ARTIFACT_NAME}.tar.gz.sha256
 
       - name: Upload artifact
         uses: actions/upload-artifact@v3
