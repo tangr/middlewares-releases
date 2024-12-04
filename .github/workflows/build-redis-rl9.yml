@@ -103,8 +103,8 @@ jobs:
           # Create artifact package
           ARTIFACT_NAME="redis-${{ inputs.redis_version }}-rl9-x86_64"
           cd ..
-          mkdir -p $ARTIFACT_NAME
-          cp -r ${{ env.ARTIFACT_DIR }}/* $ARTIFACT_NAME/
+          mkdir -p $ARTIFACT_NAME/bin
+          cp -r ${{ env.ARTIFACT_DIR }}/* $ARTIFACT_NAME/bin
           tar czf ${ARTIFACT_NAME}.tar.gz $ARTIFACT_NAME
           echo "artifact_name=${ARTIFACT_NAME}.tar.gz" >> $GITHUB_OUTPUT
 
