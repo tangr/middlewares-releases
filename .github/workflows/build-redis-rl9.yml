@@ -101,7 +101,7 @@ jobs:
           sha256sum redis-* > sha256sums.txt
 
           # Create artifact package
-          ARTIFACT_NAME="redis-${{ inputs.redis_version }}-rockylinux9-x86_64"
+          ARTIFACT_NAME="redis-${{ inputs.redis_version }}-rl9-x86_64"
           cd ..
           mkdir -p $ARTIFACT_NAME
           cp -r ${{ env.ARTIFACT_DIR }}/* $ARTIFACT_NAME/
@@ -116,8 +116,8 @@ jobs:
         with:
           name: redis-build
           path: |
-            redis-${{ inputs.redis_version }}-rockylinux9-x86_64.tar.gz
-            redis-${{ inputs.redis_version }}-rockylinux9-x86_64.tar.gz.sha256
+            redis-${{ inputs.redis_version }}-rl9-x86_64.tar.gz
+            redis-${{ inputs.redis_version }}-rl9-x86_64.tar.gz.sha256
 
     outputs:
       artifact_name: ${{ steps.prepare.outputs.artifact_name }}
@@ -150,15 +150,15 @@ jobs:
 
           ## SHA256 Checksums
           \`\`\`
-          $(cat redis-${{ inputs.redis_version }}-rockylinux9-x86_64.tar.gz.sha256)
+          $(cat redis-${{ inputs.redis_version }}-rl9-x86_64.tar.gz.sha256)
           \`\`\`
 
           ## Installation
           1. Download the package
           2. Verify the checksum:
-             \`sha256sum -c redis-${{ inputs.redis_version }}-rockylinux9-x86_64.tar.gz.sha256\`
+             \`sha256sum -c redis-${{ inputs.redis_version }}-rl9-x86_64.tar.gz.sha256\`
           3. Extract the archive:
-             \`tar xzf redis-${{ inputs.redis_version }}-rockylinux9-x86_64.tar.gz\`
+             \`tar xzf redis-${{ inputs.redis_version }}-rl9-x86_64.tar.gz\`
 
           ## Additional Information
           - Workflow Run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
@@ -172,11 +172,11 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tag_name: redis-${{ inputs.redis_version }}-rockylinux9
+          tag_name: redis-${{ inputs.redis_version }}-rl9
           name: Redis ${{ inputs.redis_version }} (${{ inputs.release_type }}) - Rocky Linux 9
           body_path: changelog.md
           draft: false
           prerelease: ${{ inputs.release_type != 'stable' }}
           files: |
-            redis-${{ inputs.redis_version }}-rockylinux9-x86_64.tar.gz
-            redis-${{ inputs.redis_version }}-rockylinux9-x86_64.tar.gz.sha256
+            redis-${{ inputs.redis_version }}-rl9-x86_64.tar.gz
+            redis-${{ inputs.redis_version }}-rl9-x86_64.tar.gz.sha256
