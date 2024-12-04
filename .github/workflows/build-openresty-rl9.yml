@@ -105,7 +105,7 @@ jobs:
           EOF
 
           # Create artifact package
-          ARTIFACT_NAME="openresty-${{ inputs.openresty_version }}-rockylinux9-x86_64.tar.gz"
+          ARTIFACT_NAME="openresty-${{ inputs.openresty_version }}-rl9-x86_64.tar.gz"
 
           # Make sure we're in the correct directory and the artifact exists
           ls -la ${{ env.ARTIFACT_DIR }}
@@ -128,8 +128,8 @@ jobs:
         with:
           name: openresty-build
           path: |
-            openresty-${{ inputs.openresty_version }}-rockylinux9-x86_64.tar.gz
-            openresty-${{ inputs.openresty_version }}-rockylinux9-x86_64.tar.gz.sha256
+            openresty-${{ inputs.openresty_version }}-rl9-x86_64.tar.gz
+            openresty-${{ inputs.openresty_version }}-rl9-x86_64.tar.gz.sha256
 
     outputs:
       artifact_name: ${{ steps.prepare.outputs.artifact_name }}
@@ -162,15 +162,15 @@ jobs:
 
           ## SHA256 Checksums
           \`\`\`
-          $(cat openresty-${{ inputs.openresty_version }}-rockylinux9-x86_64.tar.gz.sha256)
+          $(cat openresty-${{ inputs.openresty_version }}-rl9-x86_64.tar.gz.sha256)
           \`\`\`
 
           ## Installation
           1. Download the package
           2. Verify the checksum:
-             \`sha256sum -c openresty-${{ inputs.openresty_version }}-rockylinux9-x86_64.tar.gz.sha256\`
+             \`sha256sum -c openresty-${{ inputs.openresty_version }}-rl9-x86_64.tar.gz.sha256\`
           3. Extract the archive:
-             \`tar xzf openresty-${{ inputs.openresty_version }}-rockylinux9-x86_64.tar.gz\`
+             \`tar xzf openresty-${{ inputs.openresty_version }}-rl9-x86_64.tar.gz\`
 
           ## Additional Information
           - Workflow Run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
@@ -184,11 +184,11 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tag_name: openresty-${{ inputs.openresty_version }}-rockylinux9
+          tag_name: openresty-${{ inputs.openresty_version }}-rl9
           name: OpenResty ${{ inputs.openresty_version }} (${{ inputs.release_type }}) - Rocky Linux 9
           body_path: changelog.md
           draft: false
           prerelease: ${{ inputs.release_type != 'stable' }}
           files: |
-            openresty-${{ inputs.openresty_version }}-rockylinux9-x86_64.tar.gz
-            openresty-${{ inputs.openresty_version }}-rockylinux9-x86_64.tar.gz.sha256
+            openresty-${{ inputs.openresty_version }}-rl9-x86_64.tar.gz
+            openresty-${{ inputs.openresty_version }}-rl9-x86_64.tar.gz.sha256

@@ -142,7 +142,7 @@ jobs:
           sha256sum bin/mongo* > sha256sums.txt
 
           # Create artifact package
-          ARTIFACT_NAME="mongodb-${{ inputs.mongodb_version }}-rockylinux9-x86_64.tar.gz"
+          ARTIFACT_NAME="mongodb-${{ inputs.mongodb_version }}-rl9-x86_64.tar.gz"
           cd ..
           tar czf $ARTIFACT_NAME -C ${{ env.ARTIFACT_DIR }} .
           echo "artifact_name=$ARTIFACT_NAME" >> $GITHUB_OUTPUT
@@ -155,8 +155,8 @@ jobs:
         with:
           name: mongodb-build
           path: |
-            mongodb-${{ inputs.mongodb_version }}-rockylinux9-x86_64.tar.gz
-            mongodb-${{ inputs.mongodb_version }}-rockylinux9-x86_64.tar.gz.sha256
+            mongodb-${{ inputs.mongodb_version }}-rl9-x86_64.tar.gz
+            mongodb-${{ inputs.mongodb_version }}-rl9-x86_64.tar.gz.sha256
 
     outputs:
       artifact_name: ${{ steps.prepare.outputs.artifact_name }}
@@ -189,15 +189,15 @@ jobs:
 
           ## SHA256 Checksums
           \`\`\`
-          $(cat mongodb-${{ inputs.mongodb_version }}-rockylinux9-x86_64.tar.gz.sha256)
+          $(cat mongodb-${{ inputs.mongodb_version }}-rl9-x86_64.tar.gz.sha256)
           \`\`\`
 
           ## Installation
           1. Download the package
           2. Verify the checksum:
-             \`sha256sum -c mongodb-${{ inputs.mongodb_version }}-rockylinux9-x86_64.tar.gz.sha256\`
+             \`sha256sum -c mongodb-${{ inputs.mongodb_version }}-rl9-x86_64.tar.gz.sha256\`
           3. Extract the archive:
-             \`tar xzf mongodb-${{ inputs.mongodb_version }}-rockylinux9-x86_64.tar.gz\`
+             \`tar xzf mongodb-${{ inputs.mongodb_version }}-rl9-x86_64.tar.gz\`
 
           ## Additional Information
           - Workflow Run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
@@ -211,11 +211,11 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tag_name: mongodb-${{ inputs.mongodb_version }}-rockylinux9
+          tag_name: mongodb-${{ inputs.mongodb_version }}-rl9
           name: MongoDB ${{ inputs.mongodb_version }} (${{ inputs.release_type }}) - Rocky Linux 9
           body_path: changelog.md
           draft: false
           prerelease: ${{ inputs.release_type != 'stable' }}
           files: |
-            mongodb-${{ inputs.mongodb_version }}-rockylinux9-x86_64.tar.gz
-            mongodb-${{ inputs.mongodb_version }}-rockylinux9-x86_64.tar.gz.sha256
+            mongodb-${{ inputs.mongodb_version }}-rl9-x86_64.tar.gz
+            mongodb-${{ inputs.mongodb_version }}-rl9-x86_64.tar.gz.sha256
